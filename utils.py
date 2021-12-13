@@ -1,6 +1,8 @@
 import requests
-
-from config import TELEGRAM, ENV
+from datetime import datetime
+from dateutil import tz
+from config import TELEGRAM, ENV, NYC
+from pytz import timezone
 
 
 def print_trade_analysis(analyzer):
@@ -51,3 +53,25 @@ def send_telegram_message(message=""):
         'chat_id': TELEGRAM.get("channel"),
         'text': message
     })
+
+def to_local_time(utc=datetime.utcnow()):
+    # # METHOD 1: Hardcode zones:
+    from_zone = tz.gettz('UTC')
+    to_zone = tz.gettz('America/New_York')
+    newyork_tz = timezone('America/New_York')
+
+    newyork = newyork_tz.localize(utc)
+    # METHOD 2: Auto-detect zones:
+    # from_zone = tz.tzutc()
+    # to_zone = tz.tzlocal()
+
+    # utc = datetime.utcnow()
+    # utc = datetime.strptime('2011-01-21 02:37:21', '%Y-%m-%d %H:%M:%S')
+
+    # Tell the datetime object that it's in UTC time zone since 
+    # datetime objects are 'naive' by default
+    utc = utc.replace(tzinfo=NYC).strftime('%B %d %Y - %I:%M:%p')
+
+    # Convert time zone
+    # utc = utc.astimezone(to_zone).strftime('%B %d %Y - %I:%M:%p')
+    return newyork

@@ -1,0 +1,11 @@
+BUY: LEARNED / STATISTIC VALUE.
+    LET's say learned VALUE
+    Stop loss: some risk value away from learned value
+
+    so let's say when we receive a Zigtop, 
+        we place a buy order at say 0.95 * zigtop_high
+        and place a stop loss at 0.91 of zigtop_high 
+
+    we then place a sell order of 1.02 of when we receive
+        ziglow_low/ close?
+

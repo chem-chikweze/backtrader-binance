@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-from datetime import datetime
+from datetime import datetime 
 import backtrader as bt
 import backtrader.indicators as btind
 import backtrader.feeds as btfeeds
 from indicators.zigzag import *
 from indicators.supres import SupportResistance
-from utils import send_telegram_message
+from utils import send_telegram_message, to_local_time
 
 
 # Create a Stratey
@@ -16,7 +16,6 @@ class MarketStructure(bt.Strategy):
     not suitable to a downward trending market
     """
     params = (
-
         ('maperiod', 15),
         ('devfactor', 1.6),
         ('bollperiod', 9),
@@ -25,7 +24,6 @@ class MarketStructure(bt.Strategy):
         ('stop_loss', 0.34),
         ('profit_mult', 0.2),
         ('trail', False),
-        
     )
 
     # keeps track of buy order for stop loss
@@ -48,9 +46,10 @@ class MarketStructure(bt.Strategy):
 
     def log(self, txt, dt=None, doprint=False):
         ''' Logging function fot this strategy'''
-        if self.params.printlog or doprint:
-            dt = dt or self.datas[0].datetime.date(0)
-            print('%s, %s' % (dt.isoformat(), txt))
+        # if self.params.printlog or doprint:
+        dt = dt or self.data.datetime.datetime(0) or self.datas[0].datetime.date(0)
+        print('%s, %s' % ( to_local_time(dt), txt) )
+        # print('%s, %s' % (dt.isoformat(), txt))
 
     def __init__(self):
         # Keep a reference to the "close" line in the data[0] dataseries
@@ -61,14 +60,11 @@ class MarketStructure(bt.Strategy):
         self.buyprice = None
         self.buycomm = None
 
-        # zigzags
         self.nullzig = ZigZag(self.data)
-        # support and resistance
-        self.supres = SupportResistance(self.nullzig)
 
     def notify_order(self, order):
         if order.status in [order.Submitted, order.Accepted]:
-            # print("order submitted / Accepted")
+            print("order submitted / Accepted by Broker")
             # Buy/Sell order submitted/accepted to/by broker - Nothing to do
             return
 
@@ -89,7 +85,6 @@ class MarketStructure(bt.Strategy):
                          (order.executed.price,
                           order.executed.value,
                           order.executed.comm))
-
             self.bar_executed = len(self)
             # print(order.executed.price, "sell order complete")
 
@@ -101,7 +96,6 @@ class MarketStructure(bt.Strategy):
             self.order = None
             ""
 
-
     def notify_trade(self, trade):
         if not trade.isclosed:
             return
@@ -112,9 +106,12 @@ class MarketStructure(bt.Strategy):
 
     def next(self):
         # Simply log the closing price of the series from the reference
-        # self.log('Close, %.2f' % self.dataclose[0])
-        # print(self.logdata())
-        
+        self.log('Open: {}, High: {}, Low: {}, Close: {}'.format(
+            self.data.open[0],
+            self.data.high[0],
+            self.data.low[0],
+            self.data.close[0]))
+
         # Check if an order is pending ... if yes, we cannot send a 2nd one
         if self.order:
             print("order pending")
@@ -131,7 +128,7 @@ class MarketStructure(bt.Strategy):
             else:   
                 self.log('BUY CREATE, %.2f' % self.dataclose[0])
                 self.order = self.sell()
-                send_telegram_message("sell {}  {}".format(self.dataclose[0], datetime.utcnow))
+                send_telegram_message("sold {}  {}".format(self.dataclose[0], to_local_time()))
 
         else:
             # do nothing if the trend is already in motion
@@ -141,7 +138,7 @@ class MarketStructure(bt.Strategy):
                 self.log('SELL CREATE, %.2f' % self.dataclose[0])
                 # keep track of the created order to avoid a 2nd order
                 self.sell_order = self.buy()
-                send_telegram_message("buy {}  {}".format(self.dataclose[0], datetime.utcnow))
+                send_telegram_message("bought {}  {}".format(self.dataclose[0], to_local_time()))
 
 
     def stop(self):

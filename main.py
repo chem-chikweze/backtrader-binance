@@ -9,11 +9,12 @@ import time
 import datetime as dt
 from backtrader_binance import BinanceStore
 from config import BINANCE, ENV, PRODUCTION, COIN_TARGET, COIN_REFER, DEBUG
+# from btplotting import BacktraderPlottingLive
 
 # from dataset.dataset import CustomDataset
 from sizer.percent import FullMoney
 from strategies.structure import MarketStructure as ts
-from utils import print_trade_analysis, print_sqn, send_telegram_message
+from utils import send_telegram_message, to_local_time
 
 
 def main():
@@ -72,16 +73,14 @@ def main():
         api_secret=BINANCE.get("secret"),
         coin_refer=COIN_REFER,
         coin_target=COIN_TARGET,
-        # coin_refer='BTC',
-        # coin_target='USDT',
-        # testnet=True
+        testnet=True
         )
         broker = store.getbroker()
         cerebro.setbroker(broker)
 
-        from_date = dt.datetime.utcnow() - dt.timedelta(minutes=60*16)
+        from_date = dt.datetime.utcnow() - dt.timedelta(minutes=(60*89)+5 )
         data = store.getdata(
-            timeframe_in_minutes=30,
+            timeframe_in_minutes=1,
             start_date=from_date)
 
         cerebro.adddata(data)
@@ -97,6 +96,8 @@ def main():
     # Analyzers to evaluate trades and strategies
     # cerebro.addanalyzer(btan.DrawDown, _name='drawdown')
     cerebro.addanalyzer(BasicTradeStats, _name="BasicTradeStats", )
+    # for live plotting
+    # cerebro.addanalyzer(BacktraderPlottingLive)
 
     # Include Strategy
     cerebro.addstrategy(ts)
@@ -116,8 +117,7 @@ def main():
         each.print()
 
     if DEBUG:
-        ""
-    cerebro.plot()
+        cerebro.plot()
 
 
 if __name__ == "__main__":
@@ -125,8 +125,8 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         print("finished.")
-        time = dt.datetime.now().strftime("%d-%m-%y %H:%M")
-        send_telegram_message("Bot finished by user at %s" % time)
+        # time = dt.datetime.now().strftime("%d-%m-%y %H:%M")
+        send_telegram_message("Bot finished by user at %s" % to_local_time())
     except Exception as err:
         send_telegram_message("Bot finished with error: %s" % err)
         print("Finished with error: ", err)

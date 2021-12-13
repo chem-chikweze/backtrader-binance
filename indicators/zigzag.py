@@ -5,6 +5,8 @@ import backtrader.filters as btfilters
 import pandas as pd
 from csv import writer
 # from nullfilter import NullBarFilter
+from utils import send_telegram_message, to_local_time
+from datetime import datetime
 
 class ZigZag(bt.ind.PeriodN):
     '''
@@ -34,9 +36,13 @@ class ZigZag(bt.ind.PeriodN):
 
     params = (
         ('period', 2),
-        ('retrace', 2.4), 
+        ('retrace', 2.238), 
         # in percent default  is 0.05 : 2.5 for bitcoin, 20 for AMC
-        ('minbars', 2), # number of bars to skip after the trend change
+        # 2.4 for BNB but the signal comes in pretty late at 2.4 retracement
+        # so we are using a shorter signal. .07 It wins 75%
+        # max drawdown of 13% ouch Profit factor of 6.17 and reward:risk of 2.03
+        ('minbars', 2), 
+        # number of bars to skip after the trend change
     )
 
     def __init__(self):
@@ -104,6 +110,7 @@ class ZigZag(bt.ind.PeriodN):
                         writer_object = writer(f_object)
                         writer_object.writerow(list_data)  
                         f_object.close()
+                    send_telegram_message("sell {}  {} time: {}".format(self.l.last_high[0], 1, to_local_time()))
 
 
                 elif self.count_bars < self.minbars and self.data.close[0] < self.l.last_low[0]:
@@ -125,6 +132,7 @@ class ZigZag(bt.ind.PeriodN):
                         writer_object = writer(f_object)
                         writer_object.writerow(list_data)  
                         f_object.close()
+                    send_telegram_message("sell {}  {} time: {}".format(self.l.last_high[0], 1, to_local_time()))
 
         # Down trend
         elif self.l.trend[-1] == -1:
@@ -146,7 +154,7 @@ class ZigZag(bt.ind.PeriodN):
                         writer_object = writer(f_object)
                         writer_object.writerow(list_data)  
                         f_object.close()
-
+                    send_telegram_message("buy {}  {} time: {}".format(self.l.last_low[0], -1, to_local_time()))
 
                 elif self.count_bars < self.minbars and self.data.close[0] > self.l.last_high[-1]:
                     self.l.trend[0] = 1
@@ -161,6 +169,7 @@ class ZigZag(bt.ind.PeriodN):
                         writer_object = writer(f_object)
                         writer_object.writerow(list_data)  
                         f_object.close()
+                    send_telegram_message("buy {}  {} time: {}".format(self.l.last_low[0], -1, to_local_time()))
 
         # Decrease minbars counter
         self.count_bars -= 1

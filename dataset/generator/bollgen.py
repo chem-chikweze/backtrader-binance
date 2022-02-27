@@ -11,7 +11,7 @@ from datetime import datetime
 class ZigZag(bt.ind.PeriodN):
     '''
       ZigZag indicator.
-b
+
     '''
     lines = (
         'trend',

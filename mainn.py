@@ -66,7 +66,7 @@ class CustomStrategy(bt.Strategy):
                 send_telegram_message("bought {}  {}".format(self.dataclose[0], to_local_time()))
 
 
-        print('*' * 5, 'NEXT:', bt.num2date(self.data0.datetime[0]), self.data0.close[0])
+        # print('*' * 5, 'NEXT:', bt.num2date(self.data0.datetime[0]), self.data0.close[0])
 
     def notify_order(self, order):
         if order.status in [order.Submitted, order.Accepted]:
@@ -150,7 +150,7 @@ def main():
     broker = store.getbroker(broker_mapping=broker_mapping)
     cerebro.setbroker(broker) #ince:16392834 16392834
 
-    hist_start_dat = dt.datetime(2021, 10, 29, 0, 0)
+    hist_start_date = dt.datetime(2021, 10, 29, 0, 0)
     #dt.datetime.utcnow() - dt.timedelta(minutes=10200)
     data = store.getdata(
         dataname='BNB/USDT',

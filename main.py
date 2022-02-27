@@ -20,16 +20,15 @@ from utils import send_telegram_message, to_local_time
 def main():
     cerebro = bt.Cerebro(quicknotify=True)
 
-    if ENV == PRODUCTION:  # Live trading with Binance
+    if ENV == PRODUCTION:  
+        # Live trading with Binance
         # broker_config = {
         #     'apiKey': BINANCE.get("key"),
         #     'secret': BINANCE.get("secret"),
         #     'nonce': lambda: str(int(time.time() * 1000)),
         #     'enableRateLimit': True,
         # }
-
         # store = CCXTStore(exchange='binance', currency=COIN_REFER, config=broker_config, retries=5, debug=DEBUG)
-
         # broker_mapping = {
         #     'order_types': {
         #         bt.Order.Market: 'market',
@@ -48,11 +47,9 @@ def main():
         #         }
         #     }
         # }
-
         # broker = store.getbroker(broker_mapping=broker_mapping)
         # cerebro.setbroker(broker)
         # cerebro.addsizer(bt.sizers.PercentSizer, percents = 90)
-
         # hist_start_date = dt.datetime.utcnow() - dt.timedelta(minutes=1)
         # data = store.getdata(
         #     dataname='%s/%s' % (COIN_TARGET, COIN_REFER),
@@ -92,7 +89,9 @@ def main():
         cerebro.broker.setcommission(commission=0.001, name=COIN_TARGET)  # Simulating exchange fee
         cerebro.broker.setcash(100000.0)
         cerebro.addsizer(bt.sizers.PercentSizer, percents = 90)
-        
+    
+
+
     # Analyzers to evaluate trades and strategies
     # cerebro.addanalyzer(btan.DrawDown, _name='drawdown')
     cerebro.addanalyzer(BasicTradeStats, _name="BasicTradeStats", )
@@ -100,7 +99,12 @@ def main():
     # cerebro.addanalyzer(BacktraderPlottingLive)
 
     # Include Strategy
+    # cerebro.addstrategy(ts)
+
     cerebro.addstrategy(ts)
+    cerebro.adddata(data)
+    cerebro.addsizer(bt.sizers.PercentSizer, percents = 91)
+    # cerebro.run()
 
     # Starting backtrader bot
     initial_value = cerebro.broker.getvalue()

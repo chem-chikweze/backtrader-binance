@@ -1,17 +1,16 @@
 import backtrader as bt
 import backtrader.indicators as btind
 import backtrader.feeds as btfeeds
-import backtrader.filters as btfilters
 import pandas as pd
+import backtrader.filters as btfilters
 from csv import writer
 # from nullfilter import NullBarFilter
 from utils import send_telegram_message, to_local_time
-from datetime import datetime
 
 class ZigZag(bt.ind.PeriodN):
     '''
       ZigZag indicator.
-b
+
     '''
     lines = (
         'trend',
@@ -19,7 +18,6 @@ b
         'last_low',
         'zigzag', # contains 'nan' values for data points that are not pivots
         'value',
-
     )
 
     plotinfo = dict(
@@ -35,18 +33,28 @@ b
     )
 
     params = (
-        ('retrace', 2.238), 
-        # in percent default  is 0.05 : 2.5 for bitcoin, 20 for AMC
-        # 2.4 for BNB but the signal comes in pretty late at 2.4 retracement
-        # so we are using a shorter signal. .07 It wins 75%
-        # max drawdown of 13% ouch Profit factor of 6.17 and reward:risk of 2.03
+        ('period', 2),
+        ('retrace',  2.238  ), #8.2387), 
+        # in percent default  is 0.05 : 
+        # 2.5 for bitcoin, 20 for AMC
+        # 3 for SAN 100% 
+        # 2.2 for BNBUSD trades more but 2.4,2.5 trades less but will they make e^x more long term?
+        # LAGGGINGGGGGG this shit is lagging
+        # but we can do this: when we identify a high, place an order at 0.92109500805 of the high.
+        # or wait, could we keep on modifying our order. If we are in an uptrend that has exceeded 
+        # some amount and we have set our profit, should we keep modifying our order to make up for this 
+        # lagging mess.
+        # keep modifying 
+        # given this uptrend in amount, what was the learned retracement?
+        # put our buy at retracement. If it works, kudos to the knowledge.
+        # we have seen .92 retracement from highs at BNBUSD, we might trade with it. And then 
+        # watch out for zigzag confirmation.
+        # LAGGGgGgGGggggGGGGggg lagoster.
         ('minbars', 2), # number of bars to skip after the trend change
     )
 
-
     def __init__(self):
         super(ZigZag, self).__init__()
-
         assert self.p.retrace > 0, 'Retracement should be above zero.'
         assert self.p.minbars >= 0, 'Minimal bars should be >= zero.'
 
@@ -55,9 +63,8 @@ b
         self.count_bars = 0
         self.last_pivot_t = 0
         self.last_pivot_ago = 0
-
+        # self.strategy = strategy
         # self.data = self.data.addfilter(NullBarFilter)
-
 
     def prenext(self):
         self.l.trend[0] = 0
@@ -103,17 +110,19 @@ b
                     self.l.value[-self.last_pivot_ago] = 1 # resistance
                     self.last_pivot_t = curr_idx
 
-                    list_data = [self.l.last_high[0],  1, self.datetime.date().isoformat()]
+                    list_data = [self.l.last_high[0],  1, self.data.close[0]]
                     with open('zigzags.csv', 'a', newline='') as f_object:  
                         writer_object = writer(f_object)
                         writer_object.writerow(list_data)  
                         f_object.close()
-                    # send_telegram_message('sell {} {} time: {}'.format(
-                    #     self.l.last_high[0], 
-                    #     1, 
-                    #     to_local_time()
-                    #     )
-                    # )
+
+                    send_telegram_message('buy {} {} time: {}'.format(
+                        self.l.last_high[0], 
+                        1, 
+                        self.data.close[0]
+                        )
+                    )
+
 
                 elif self.count_bars < self.minbars and self.data.close[0] < self.l.last_low[0]:
                     self.l.trend[0] = -1
@@ -123,17 +132,24 @@ b
                     self.l.value[-self.last_pivot_ago] = 1 # resistance
                     self.last_pivot_t = curr_idx
 
-                    list_data = [self.l.last_high[0],  1, self.datetime.date().isoformat()]
+                    # "if a new pivot point was made, write it to file"
+                    # # list_data = pd.DataFrame( {"Pivot": self.l.last_high[0], "Value": 1}, index=[0])
+                    # # df = pd.read_csv('zigzags.csv')
+                    # # df  = pd.concat([list_data, df])
+                    # # df.to_csv('zigzags.csv', mode='w')
+
+                    list_data = [self.l.last_high[0],  1, self.data.close[0]]
                     with open('zigzags.csv', 'a', newline='') as f_object:  
                         writer_object = writer(f_object)
                         writer_object.writerow(list_data)  
                         f_object.close()
-                    # send_telegram_message('sell {} {} time: {}'.format(
-                    #     self.l.last_high[0], 
-                    #     1, 
-                    #     to_local_time()
-                    #     )
-                    # )
+
+                    send_telegram_message('buy {} {} time: {}'.format(
+                        self.l.last_high[0], 
+                        1, 
+                        self.data.close[0]
+                        )
+                    )
 
         # Down trend
         elif self.l.trend[-1] == -1:
@@ -150,17 +166,19 @@ b
                     self.l.value[-self.last_pivot_ago] = -1 # new support
                     self.last_pivot_t = curr_idx
 
-                    list_data = [self.l.last_low[0],  -1, self.datetime.date().isoformat()]
+                    list_data = [self.l.last_low[0],  -1, self.data.close[0]]
                     with open('zigzags.csv', 'a', newline='') as f_object:  
                         writer_object = writer(f_object)
                         writer_object.writerow(list_data)  
                         f_object.close()
-                    # send_telegram_message('buy {} {} time: {}'.format(
-                    #     self.l.last_low[0], 
-                    #     -1, 
-                    #     to_local_time()
-                    #     )
-                    # )
+                    
+                    send_telegram_message('sell {} {} time: {}'.format(
+                        self.l.last_low[0], 
+                        -1, 
+                        self.data.close[0]
+                        )
+                    )
+
 
                 elif self.count_bars < self.minbars and self.data.close[0] > self.l.last_high[-1]:
                     self.l.trend[0] = 1
@@ -170,17 +188,20 @@ b
                     self.l.value[-self.last_pivot_ago] = -1 # new support
                     self.last_pivot_t = curr_idx
 
-                    list_data = [self.l.last_low[0],  -1, self.datetime.date().isoformat()]
+                    list_data = [self.l.last_low[0],  -1, self.data.close[0]]
                     with open('zigzags.csv', 'a', newline='') as f_object:  
                         writer_object = writer(f_object)
                         writer_object.writerow(list_data)  
                         f_object.close()
-                    # send_telegram_message('buy {} {} time: {}'.format(
-                    #     self.l.last_low[0], 
-                    #     -1, 
-                    #     to_local_time()
-                    #     )
-                    # )
+                    
+                    send_telegram_message('sell {} {} time: {}'.format(
+                        self.l.last_low[0], 
+                        -1, 
+                        self.data.close[0]
+                        )
+                    )
+
+                    
 
         # Decrease minbars counter
         self.count_bars -= 1

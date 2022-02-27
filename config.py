@@ -13,15 +13,13 @@ NYC = zoneinfo.ZoneInfo("America/New_York")
 
 BINANCE = {
   # old did not work
-  "key": "MIiJgHM3eyTqPlbHCar6P5kZ23SsCHXKlnd8OmZpH72czt2hVVmUH0Czf1lEcwkX",
-  "secret": "HC9h3GkiZ9DyiPvYFbwMPavVwVyvYbm8qpKcQlq42Wt73MAoCiRC8bpHoQtacL5K"
 
   # testnet
   # "key": "h51BzWIJPFEWsiwrtSEZrPbd9hg1RBLYA4Obt4648xvk6Ui9L13S75e8oPExxKcX", **/.git
   # "secret": "28612dc1YDdd4kDWljRSRZh3Zg63nI4AvfoViW2Xrdn5u777jKefzKBNSykZS8ce"
+  "key": "V6yWvdItTkcXSKfhApGvTkx2HYNU9e1TeP6yJlY0jNme7zXUoPhu3yVOVz0QwhQL",
+  "secret": "IFzyPqt4ctlYkQ6PDDj8KLt8H8wQdqshn9SRPNspodkVXUDw0RUSZwnAi6jU2BeH",
 
-  # "key": "10ZSmwCkn5Ogx9YPzU0jpKWj7oArBu2AaEZ8CtTJTg3ns35039UH9YdbqUUcUo7g",
-  # "secret": "T4P0TnS3hBzmYA25UW66hRGLBedzD0ftkqyrf7jhrcHHRG8D9sdm9MeEY3NOpZeB"
 }
 
 TELEGRAM = {
@@ -29,4 +27,24 @@ TELEGRAM = {
   "bot": "2124069658:AAG9Q_NXP3PajsxDD58yn4tnRrK3rFWs8-U"
 }
 
+# TELEGRAM = {
+#   "channel": "-1759912824", 
+#   "bot": "5034003189:AAEVr7ycuuWhGj69B8lMZJ_uRJMWtWYUFXw"
+# }
+
+
+
 print("ENV = ", ENV)
+
+# send_telegram_message('buy {} {} time: {}'.format(
+#                         self.l.last_low[0], 
+#                         -1, 
+#                         to_local_time()
+#                         )
+
+# send_telegram_message('sell {} {} time: {}'.format(
+#                         self.l.last_high[0], 
+#                         1, 
+#                         to_local_time()
+#                         )
+#                     )

@@ -9,3 +9,33 @@ BUY: LEARNED / STATISTIC VALUE.
     we then place a sell order of 1.02 of when we receive
         ziglow_low/ close?
 
+Why don't we get the specific price at which a zigzag is certified and use that price as a a point of referral 
+of the actual profitability of this strategy.
+
+    we could print "zigzag, price of verification (which will be the current price the market is at), sign"
+    done
+
+Why not use the point where zigzagvalue[0] is different from zigzagvalue[-1]
+    \: no because it will happen at highs and lows
+    so what if we  added a new line to zigzags.py that will only be true when there is an 
+    agreement of a change in zigzags? And then used it 
+        we could print the price at such lines and see if they reflecet the price 
+        we see 
+
+
+EXIT:
+    Put a sell order when you receive the late buy signal 
+    20% trailing when you receive buy signal
+    10% when price has moved 1.02 above low
+    7% when price moves 1.04 above low
+    5% when price moves 1.05 above low
+    2% when price moves 1.06 above low
+
+
+THINK: of the starting point from which price deviates 1.06, 0.93 
+                    X
+                          ->1.06
+                      0.97<-         
+                    --->
+            <---
+    continuously

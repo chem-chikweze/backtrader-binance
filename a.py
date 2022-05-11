@@ -11,7 +11,7 @@ if __name__ == '__main__':
     store = BinanceStore(
         api_key=BINANCE.get("key"),
         api_secret=BINANCE.get("secret"),
-        coin_refer='BNB',
+        coin_refer='BTC',
         coin_target='USDT',
         )
     # broker = store.getbroker()
@@ -19,10 +19,10 @@ if __name__ == '__main__':
     cerebro.broker.setcash(1000.0)
 
     # from_date = dt.datetime.utcnow() - dt.timedelta(minutes=5*1600)
-    from_date = dt.datetime(2022, 2, 10, 0, 0)
+    from_date = dt.datetime(2022, 3, 29, 0, 0)
     # to_date = dt.datetime(2021, 12, 24, 0, 0)
     data = store.getdata(
-        timeframe_in_minutes=240,
+        timeframe_in_minutes=5,
         start_date=from_date,
         # todate=to_date,
         # end_date = to_date,

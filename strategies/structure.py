@@ -163,7 +163,7 @@ class MarketStructure(bt.Strategy):
         #     self.log('Order Canceled/Margin/Rejected')
 
         # # write down: no pending order
-        # if order.status in [order.Completed, order.Cancelled, order.Rejected]:
+        # if order.status in [order.Completed, orde  r.Cancelled, order.Rejected]:
         #     self.order = None
         #     ""
 

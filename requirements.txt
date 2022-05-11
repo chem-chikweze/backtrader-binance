@@ -65,3 +65,4 @@ websockets            ==10.1
 wheel                 ==0.37.0
 yarl                  ==1.7.2
 yfinance              ==0.1.67
+flask

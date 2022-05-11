@@ -1,0 +1,345 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © chrism665
+
+//@version=4
+study("Price Action Index")
+// Tooltips {
+string tt_stoch = "The first value is the lookback length for your traditional Stochastic Oscillator. The second is the smoothing length."
+string tt_disp = "The dropdown is a selection of methods of calculating dispersion. The box that follows is the lookback length to measure."
+string tt_straddle = "This value defines the size of the 'straddle box' where price is within consolidation and the limits where it breaks out."
+string tt_barcolor = "Check this box if you want to color candles/bars similar to the color of the Price Action Index."
+// }
+
+// HTF Framework {
+TF0 = "None", TF1 = "Auto-Steps (15min, 60min, 4H, 1D, 3D, 1W, 1M, 12M)", TF2 = "Multiple Of Current TF", TF3 = "Fixed TF"
+i_htfRepaints       = input(false,          "Repaint HTF",group="⌚ Time Frame ⌚")
+i_htfType           = input(TF0,            "Higher Timeframe Selection",   options = [TF0, TF1, TF2, TF3],group="⌚ Time Frame ⌚")
+i_htfType2          = input(3.,             "Multiple of Current TF",  minval  = 1,group="⌚ Time Frame ⌚")
+i_htfType3          = input("D",            "Fixed TF",                type    = input.resolution,group="⌚ Time Frame ⌚")
+
+// HTF is being used.
+var htfOn       = i_htfType != TF0
+//var bool	i_invert    = input(true,      "Invert Colors")
+
+
+// —————————— PineCoders MTF Selection Framework functions
+// ————— Converts current "timeframe.multiplier" plus the TF into minutes of type float.
+f_resInMinutes() => 
+    _resInMinutes = timeframe.multiplier * (
+      timeframe.isseconds   ? 1. / 60.  :
+      timeframe.isminutes   ? 1.        :
+      timeframe.isdaily     ? 1440.     :
+      timeframe.isweekly    ? 10080.    :
+      timeframe.ismonthly   ? 43800.    : na)
+
+// ————— Returns resolution of _resolution period in minutes.
+f_tfResInMinutes(_resolution) =>
+    // _resolution: resolution of any TF (in "timeframe.period" string format).
+    security(syminfo.tickerid, _resolution, f_resInMinutes())
+
+// ————— Given current resolution, returns next step of HTF.
+f_resNextStep(_res) =>
+    // _res: current TF in fractional minutes.
+    _res    <= 1        ? "15"  :
+      _res  <= 5        ? "60"  :
+      _res  <= 30       ? "240" :
+      _res  <= 60       ? "1D"  :
+      _res  <= 360      ? "3D"  :
+      _res  <= 1440     ? "1W"  :
+      _res  <= 10080    ? "1M"  : "12M"
+
+// ————— Returns a multiple of current resolution as a string in "timeframe.period" format usable with "security()".
+f_multipleOfRes(_res, _mult) => 
+    // _res:  current resolution in minutes, in the fractional format supplied by f_resInMinutes() companion function.
+    // _mult: Multiple of current TF to be calculated.
+    // Convert current float TF in minutes to target string TF in "timeframe.period" format.
+    _targetResInMin = _res * max(_mult, 1)
+    _targetResInMin     <= 0.083        ? "5S"  :
+      _targetResInMin   <= 0.251        ? "15S" :
+      _targetResInMin   <= 0.501        ? "30S" :
+      _targetResInMin   <= 1440         ? tostring(round(_targetResInMin)) :
+      _targetResInMin   <= 43800        ? tostring(round(min(_targetResInMin / 1440, 365))) + "D" :
+      tostring(round(min(_targetResInMin / 43800, 12))) + "M"
+
+// ————— HTF calcs
+// Get current resolution in float minutes.
+var resInMinutes = f_resInMinutes()
+// Get HTF from user-defined mode.
+var htf = i_htfType == TF0 ? timeframe.period : i_htfType == TF1 ? f_resNextStep(resInMinutes) : i_htfType == TF2 ? f_multipleOfRes(resInMinutes, i_htfType2) : i_htfType3
+// }
+
+// Methods of Dispersion {
+string dis0 = "Standard Deviation"
+f_dis0(src,len)=> stdev(src,len)
+string dis1 = "Variance"
+f_dis1(src,len)=> variance(src,len)
+string dis2 = "Coefficient of Variation"
+f_dis2(src,len)=> stdev(src,len) / sma(src,len)
+string dis3 = "Signal-to-Noise"
+f_dis3(src,len)=> sma(src,len) / stdev(src,len)
+string dis4 = "Signal-to-Noise²"
+f_dis4(src,len)=> pow(sma(src,len),2) / pow(stdev(src,len),2)
+string dis5 = "Index of Dispersion"
+f_dis5(src,len)=> pow(variance(src,len),2) / sma(src,len)
+string dis6 = "Efficiency"
+f_dis6(src,len)=> pow(stdev(src,len),2) / pow(sma(src,len),2)
+string dis7 = "High-Low Range"
+f_dis7(src,len)=> highest(len) - lowest(len)
+// }
+
+// Price Action Index Inputs {
+src = input(type=input.source,defval=close,title="Source",group="⌨️ Inputs 🖱")
+len = input(type=input.integer,defval=20,title="Stochastic",group="⌨️ Inputs 🖱",inline="Stoch")
+smooth = input(type=input.integer,defval=3,title="",group="⌨️ Inputs 🖱",inline="Stoch",tooltip=tt_stoch)
+dis_method = input(dis0,options=[dis0,dis1,dis2,dis3,dis4,dis5,dis6,dis7],title="Dispersion",group="⌨️ Inputs 🖱",inline="Dispersion")
+dis_len = input(type=input.integer,defval=20,title="",group="⌨️ Inputs 🖱",inline="Dispersion",tooltip=tt_disp)
+
+straddle_area = input(type=input.float,defval=5.0,title="🧲 Straddle Area ⛔",group="Outputs & Alerts",tooltip=tt_straddle)
+use_bar_colors = input(type=input.bool,defval=false,title="🎨 Use Bar Colors 🎨",group="Outputs & Alerts",tooltip=tt_barcolor)
+use_alerts = input(type=input.bool,defval=false,title="🔇 Use Alerts 🔊",group="Outputs & Alerts")
+alerts_breakouts = input(type=input.bool,defval=false,title="📈 Breakouts 📉",group="Outputs & Alerts",inline="Alerts")
+alerts_extremes = input(type=input.bool,defval=false,title="⚠️ Tops/Bottoms ⚠️",group="Outputs & Alerts",inline="Alerts")
+// }
+
+// Divergence Indicator Inputs {
+lbR = input(title="Pivot Lookback Right", defval=2,group="Divergence Indicator")
+lbL = input(title="Pivot Lookback Left", defval=2,group="Divergence Indicator")
+rangeUpper = input(title="Max of Lookback Range", defval=10,group="Divergence Indicator")
+rangeLower = input(title="Min of Lookback Range", defval=2,group="Divergence Indicator")
+plotBull = input(title="Plot Bullish", defval=true,group="Divergence Indicator")
+plotHiddenBull = input(title="Plot Hidden Bullish", defval=false,group="Divergence Indicator")
+plotBear = input(title="Plot Bearish", defval=true,group="Divergence Indicator")
+plotHiddenBear = input(title="Plot Hidden Bearish", defval=false,group="Divergence Indicator")
+bearColor = color.red
+bullColor = color.green
+hiddenBullColor = color.new(color.green, 80)
+hiddenBearColor = color.new(color.red, 80)
+textColor = color.white
+noneColor = color.new(color.white, 100)
+// }
+
+// PAI Calcs {
+pai(src,disp,len)=>
+    _disp = f_dis0(src,dis_len)
+    if dis_method == dis1
+        _disp := f_dis1(src,dis_len)
+    else
+        if dis_method == dis2
+            _disp := f_dis2(src,dis_len)
+        else
+            if dis_method == dis3
+                _disp := -f_dis3(src,dis_len)
+            else
+                if dis_method == dis4
+                    _disp := -f_dis4(src,dis_len)
+                else
+                    if dis_method == dis5
+                        _disp := f_dis5(src,dis_len)
+                    else
+                        if dis_method == dis6
+                            _disp := f_dis6(src,dis_len)
+                        else
+                            if dis_method == dis7
+                                _disp := f_dis7(src,dis_len)
+
+    P = src==close ? ((sma(stoch(close,high,low,len),smooth) - 50)/50) : ((sma(stoch(src,src,src,len),smooth) - 50)/50)
+    V = stoch(_disp,_disp,_disp,len)
+    P*V
+
+f_security(_sym, _res, _src, _rep) => security(_sym, _res, _src[not _rep and barstate.isrealtime ? 1 : 0])[_rep or barstate.isrealtime ? 0 : 1]
+Z = not htfOn ? pai(src,dis_len,len) : f_security(syminfo.tickerid, htf, pai(src,dis_len,len), i_htfRepaints)
+// }
+
+// Output Conditionals {
+straddle = Z<straddle_area and Z>-straddle_area
+rally = Z>40
+draw = Z<-40
+
+color col = color.black
+if straddle
+    col := color.fuchsia
+if Z>straddle_area
+    col := color.lime
+if Z<-straddle_area
+    col := color.red
+// }
+
+// Plots {
+plot(Z,color=col,title="Price Action Index")
+
+st_ = hline(straddle_area,color=color.new(color.fuchsia,50), title="Straddle Area")
+sb_ = hline(-straddle_area,color=color.new(color.fuchsia,50), title="Straddle Area")
+fill(st_,sb_,color=straddle ? color.new(color.fuchsia,75) : na, title="Straddle Area")
+
+p_ob1 = hline(80,color=color.new(color.gray,20), title="Overbought Area")
+p_ob2 = hline(100,color=color.new(color.gray,10), title="Overbought Area")
+fill(p_ob1,p_ob2,color=rally ? color.new(color.red,75) : na, title="Overbought Area")
+
+p_os1 = hline(-80,color=color.new(color.gray,20), title="Oversold Area")
+p_os2 = hline(-100,color=color.new(color.gray,10), title="Oversold Area")
+fill(p_os1,p_os2,color=draw ? color.new(color.lime,75) : na, title="Oversold Area")
+
+barcolor(use_bar_colors ? col : na,editable=false, title="Bar Colors")
+// }
+
+// HFT Labels {
+dt = round(time-time[1])
+label lbl_dyn_len = label.new(time + (5*dt),80,xloc=xloc.bar_time,textcolor=color.new(color.red,20),style=label.style_none,textalign=text.align_left,text="HTF: " + htf)
+label.delete(lbl_dyn_len[1])
+// }
+
+// Divergence Plots {
+osc = Z
+plFound = na(pivotlow(osc, lbL, lbR)) ? false : true
+phFound = na(pivothigh(osc, lbL, lbR)) ? false : true
+_inRange(cond) =>
+	bars = barssince(cond == true)
+	rangeLower <= bars and bars <= rangeUpper
+
+//------------------------------------------------------------------------------
+// Regular Bullish
+// Osc: Higher Low
+
+oscHL = osc[lbR] > valuewhen(plFound, osc[lbR], 1) and _inRange(plFound[1])
+
+// Price: Lower Low
+
+priceLL = low[lbR] < valuewhen(plFound, low[lbR], 1)
+bullCond = plotBull and priceLL and oscHL and plFound
+
+plot(
+     plFound ? osc[lbR] : na,
+     offset=-lbR,
+     title="Regular Bullish",
+     linewidth=2,
+     color=(bullCond ? bullColor : noneColor)
+     )
+
+plotshape(
+	 bullCond ? osc[lbR] : na,
+	 offset=-lbR,
+	 title="Regular Bullish Label",
+	 text=" Bull ",
+	 style=shape.labelup,
+	 location=location.absolute,
+	 color=bullColor,
+	 textcolor=textColor
+	 )
+
+//------------------------------------------------------------------------------
+// Hidden Bullish
+// Osc: Lower Low
+
+oscLL = osc[lbR] < valuewhen(plFound, osc[lbR], 1) and _inRange(plFound[1])
+
+// Price: Higher Low
+
+priceHL = low[lbR] > valuewhen(plFound, low[lbR], 1)
+hiddenBullCond = plotHiddenBull and priceHL and oscLL and plFound
+
+plot(
+	 plFound ? osc[lbR] : na,
+	 offset=-lbR,
+	 title="Hidden Bullish",
+	 linewidth=2,
+	 color=(hiddenBullCond ? hiddenBullColor : noneColor)
+	 )
+
+plotshape(
+	 hiddenBullCond ? osc[lbR] : na,
+	 offset=-lbR,
+	 title="Hidden Bullish Label",
+	 text=" H Bull ",
+	 style=shape.labelup,
+	 location=location.absolute,
+	 color=bullColor,
+	 textcolor=textColor
+	 )
+
+//------------------------------------------------------------------------------
+// Regular Bearish
+// Osc: Lower High
+
+oscLH = osc[lbR] < valuewhen(phFound, osc[lbR], 1) and _inRange(phFound[1])
+
+// Price: Higher High
+
+priceHH = high[lbR] > valuewhen(phFound, high[lbR], 1)
+
+bearCond = plotBear and priceHH and oscLH and phFound
+
+plot(
+	 phFound ? osc[lbR] : na,
+	 offset=-lbR,
+	 title="Regular Bearish",
+	 linewidth=2,
+	 color=(bearCond ? bearColor : noneColor)
+	 )
+
+plotshape(
+	 bearCond ? osc[lbR] : na,
+	 offset=-lbR,
+	 title="Regular Bearish Label",
+	 text=" Bear ",
+	 style=shape.labeldown,
+	 location=location.absolute,
+	 color=bearColor,
+	 textcolor=textColor
+	 )
+
+//------------------------------------------------------------------------------
+// Hidden Bearish
+// Osc: Higher High
+
+oscHH = osc[lbR] > valuewhen(phFound, osc[lbR], 1) and _inRange(phFound[1])
+
+// Price: Lower High
+
+priceLH = high[lbR] < valuewhen(phFound, high[lbR], 1)
+
+hiddenBearCond = plotHiddenBear and priceLH and oscHH and phFound
+
+plot(
+	 phFound ? osc[lbR] : na,
+	 offset=-lbR,
+	 title="Hidden Bearish",
+	 linewidth=2,
+	 color=(hiddenBearCond ? hiddenBearColor : noneColor)
+	 )
+
+plotshape(
+	 hiddenBearCond ? osc[lbR] : na,
+	 offset=-lbR,
+	 title="Hidden Bearish Label",
+	 text=" H Bear ",
+	 style=shape.labeldown,
+	 location=location.absolute,
+	 color=bearColor,
+	 textcolor=textColor
+	 )
+// }
+
+// Conditions {
+cond_bull_breakout = crossover(Z,straddle_area)
+cond_bull_top = crossunder(Z,80)
+cond_bear_breakout = crossunder(Z,-straddle_area)
+cond_bear_bottom = crossover(Z,-80)
+// }
+
+// Alerts {
+alertcondition(straddle,title="Straddle Area",message="Inside Straddle Area")
+alertcondition(cond_bull_breakout,title="Bullish Breakout",message="Bullish Breakout")
+alertcondition(cond_bull_top,title="Bull Top",message="Bull Top")
+alertcondition(cond_bear_breakout,title="Bearish Breakout",message="Bearish Breakout")
+alertcondition(cond_bear_bottom,title="Bear Bottom",message="Bear Bottom")
+
+if use_alerts
+    if cond_bull_breakout
+        alert(syminfo.tickerid + "Bullish Breakout")
+    if cond_bull_top
+        alert(syminfo.tickerid + "Bull Top")
+    if cond_bear_breakout
+        alert(syminfo.tickerid + "Bearish Breakout")
+    if cond_bear_bottom
+        alert(syminfo.tickerid + "Bear Bottom")
+// }
